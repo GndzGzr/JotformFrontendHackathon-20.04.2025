@@ -39,6 +39,8 @@ Hackathon için kullanılacak repo: [JotformFrontendHackathon-20.04.2025](https:
 First, run the development server:
 
 ```bash
+cd jotform-hackathon
+
 npm run dev
 # or
 yarn dev
