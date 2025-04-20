@@ -49,6 +49,13 @@ pnpm dev
 # or
 bun dev
 ```
+HOME PAGE = "localhost:3000/"
+Products Page = "localhost:3000/products"
+
+If clicking on a card doesn't work:
+Single Product Details = "localhost:3000/products/{id}"
+
+
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
