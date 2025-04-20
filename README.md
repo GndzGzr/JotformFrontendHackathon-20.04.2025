@@ -6,10 +6,8 @@ Please fill in your information after forking this repository:
 - **Name**: [Ömer Faruk Horat]
 
 ## Project Description
-[Add a brief description of your project here]
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
-[Add instructions for setting up and running the project]
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
@@ -34,7 +32,7 @@ Hackathon için kullanılacak repo: [JotformFrontendHackathon-20.04.2025](https:
 - Katılımcılar kendi tercih ettikleri framework'leri kullanabilirler
 - Geliştirme ortamınızı önceden hazırlayıp reponuza göndermeniz önerilir
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
 
 ## Getting Started
 
