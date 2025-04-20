@@ -1,6 +1,6 @@
 // src/lib/products.ts
 const API_KEY = "90a4bbbfa4d879c0578c4202f440361d"
-const FORM_ID = "251073585525964"
+const FORM_ID = "251073657795973"
 
 export async function getProducts() {
     const res = await fetch(`https://api.jotform.com/form/${FORM_ID}/payment-info?apiKey=${API_KEY}`);
@@ -19,10 +19,17 @@ export async function checkout(name: string, address: string, products: any[]) {
     // Create form data for submission
     const formData = new URLSearchParams();
     
-
-    // Add customer information
-    formData.append('q65_fullName', name);
-    formData.append('q66_typeA66', address);
+    // Add required Jotform fields
+    formData.append('formID', FORM_ID);
+    formData.append('simple_fpc', '63');
+    formData.append('payment_version', '4');
+    formData.append('simple_spc', `${FORM_ID}-${FORM_ID}`);
+    formData.append('event_id', `${Date.now()}_${FORM_ID}_${Math.random().toString(36).substring(2, 10)}`);
+    
+    // Add customer information using the submission[] format
+    formData.append('submission[1]', name);
+    formData.append('submission[2_first]', address);
+    formData.append('submission[2_last]', name);
     
     // Calculate total amount
     const total = products.reduce((sum, product) => sum + (Number(product.price) * product.quantity), 0);
@@ -34,74 +41,91 @@ export async function checkout(name: string, address: string, products: any[]) {
     // Create the selectedProductsList structure
     const selectedProductsObj: any = {};
     
-    // Add products information as required by Jotform
-    products.forEach((product) => {
-        // THIS IS THE KEY PART - adding each product ID in the format q63_myProducts[][id]
-        formData.append(`q63_myProducts[][id]`, product.pid);
-        
-        // Also build the selectedProductsList object
-        selectedProductsObj[product.pid] = {
-            "0": {
-                "customOptionValues": {"0": "1"},
-                "quantity": product.quantity
-            }
-        };
-    });
-    
-    // Convert the selectedProductsList to JSON and add it to the form data
-    formData.append('selectedProductsList', JSON.stringify([selectedProductsObj]));
-    formData.append('paymentFieldsToSelectedProducts', JSON.stringify([selectedProductsObj]));
-    
-    // Add payment summary
-    const paymentSummary = {
-        "shipping": "0.00",
-        "shipping_discounted": "0.00",
-        "subtotal_discounted": total.toFixed(2),
-        "tax": "0.00",
-        "tax_discounted": "0.00",
-        "subtotal": total.toFixed(2),
-        "total": total.toFixed(2),
-        "discount": "0.00"
-    };
-    formData.append('paymentSummary', JSON.stringify(paymentSummary));
-    
-    // Add any additional required fields
-    formData.append('website', '');
-    formData.append('submitSource', 'form');
-    formData.append('timeToSubmit', '16');
-    formData.append('surchargeData', '{}');
-    
-    console.log("Form data being sent:", Object.fromEntries(formData));
-    
-    // Submit the form
+    // Set up product data
     try {
-        const res = await fetch(`https://submit.jotform.com/submit/${FORM_ID}`, {
+        // Get all products to set default quantities
+        const allProductsResponse = await getProducts();
+        const allProductsList = allProductsResponse?.content?.products || [];
+        
+        // Create a product data object
+        const productData: any = {};
+        
+        // Set default quantity 0 for all known products
+        allProductsList.forEach((product: any) => {
+            if (product.pid) {
+                productData[`special_${product.pid}`] = { "item_0": "0" };
+            }
+        });
+        
+        // Add products from cart and update the selectedProductsList
+        products.forEach((product) => {
+            // Update product quantities
+            productData[`special_${product.pid}`] = { "item_0": product.quantity.toString() };
+            
+            // Add to selectedProductsList object
+            selectedProductsObj[product.pid] = {
+                "0": {
+                    "customOptionValues": {"0": "1"},
+                    "quantity": product.quantity
+                }
+            };
+            
+            // Add product IDs
+            formData.append('submission[63_ids][]', product.pid);
+        });
+        
+        // Add product data as JSON
+        formData.append('submission[63]', JSON.stringify(productData));
+        
+        // Add selected products data needed for Jotform
+        formData.append('selectedProductsList', JSON.stringify([selectedProductsObj]));
+        formData.append('paymentFieldsToSelectedProducts', JSON.stringify([selectedProductsObj]));
+        
+        // Add payment summary
+        const paymentSummary = {
+            "shipping": "0.00",
+            "shipping_discounted": "0.00",
+            "subtotal_discounted": total.toFixed(2),
+            "tax": "0.00",
+            "tax_discounted": "0.00",
+            "subtotal": total.toFixed(2),
+            "total": total.toFixed(2),
+            "discount": "0.00"
+        };
+        formData.append('paymentSummary', JSON.stringify(paymentSummary));
+        
+        // Add any additional required fields
+        formData.append('website', '');
+        formData.append('submitSource', 'form');
+        formData.append('timeToSubmit', '16');
+        formData.append('surchargeData', '{}');
+        
+        console.log("Form data being sent:", Object.fromEntries(formData));
+        
+        // Submit the form
+        const res = await fetch(`https://api.jotform.com/form/${FORM_ID}/submissions?apiKey=${API_KEY}`, {
             method: "POST",
             body: formData,
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'text/html' // Changed to accept HTML response
+                'Accept': 'application/json' // Changed to accept JSON response
             }
         });
         
-        // Check if the response is OK
-        if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Submission failed with status ${res.status}: ${errorText}`);
+        // Parse the response as JSON
+        const responseData = await res.json();
+        
+        // Check if the response is successful based on the JSON structure
+        if (!res.ok || responseData.responseCode !== 200) {
+            throw new Error(`Submission failed: ${responseData.message || JSON.stringify(responseData)}`);
         }
         
-        // Get the response as text since it's HTML
-        const responseText = await res.text();
-        
-        // Check if the response contains success indicators
-        if (responseText.includes('Thank You') || responseText.includes('has been received')) {
-            return { 
-                success: true, 
-                message: "Order successfully submitted" 
-            };
-        } else {
-            throw new Error("Submission response did not contain expected success message");
-        }
+        // Return success with the response data
+        return { 
+            success: true, 
+            message: "Order successfully submitted",
+            data: responseData.content // Include the content from the API response
+        };
     } catch (error) {
         console.error('Checkout error:', error);
         throw error;
